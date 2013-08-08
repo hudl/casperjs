@@ -112,8 +112,8 @@ var Casper = function Casper(options) {
             userAgent:                     defaultUserAgent
         },
         remoteScripts:       [],
-        stepTimeout:         null,
-        timeout:             null,
+        stepTimeout:         60000,     // Timeout for individual step
+        timeout:             null,      // Timeout for test suite
         verbose:             false,
         waitTimeout:         5000
     };
