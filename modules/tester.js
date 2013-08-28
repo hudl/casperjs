@@ -1013,8 +1013,6 @@ Tester.prototype.renderResults = function renderResults(exit, status, save) {
     /*jshint maxstatements:20*/
     save = save || this.options.save;
     var total = this.testResults.passed + this.testResults.failed, statusText, style, result;
-    
-    /*var exitStatus = ~~(status || (this.testResults.failed > 0 ? 1 : 0));*/
     var exitStatus = ~~(status);
     
     if (total === 0) {
