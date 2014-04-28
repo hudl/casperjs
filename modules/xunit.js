@@ -153,6 +153,14 @@ XUnitExporter.prototype.getXML = function getXML() {
     return this._xml;
 };
 
+XUnitExporter.prototype.addSuccess = function (filename) {
+    
+};
+
+XUnitExporter.prototype.addFailure = function (filename) {
+    
+};
+
 XUnitExporter.prototype.fileStarted = function (filename) {
     
 };

@@ -123,7 +123,8 @@ var Tester = function Tester(casper, options) {
     this.running = false;
     this.started = false;
     this.suiteResults = new TestSuiteResult();
-    this.exporter = require(casper.cli.get('exporter') || 'xunit').create(); 
+    this.exporter = require(casper.cli.get('exporter') || 'xunit').create();
+    this.errorOnFail = casper.cli.get('error-on-failure'); 
 
     this.on('success', function onSuccess(success) {
         var timeElapsed = new Date() - this.currentTestStartTime;
@@ -1540,7 +1541,11 @@ Tester.prototype.renderResults = function renderResults(exit, status, save) {
     }
     if (exit === true) {
         this.emit("exit");
-        this.casper.exit(status ? ~~status : exitStatus);
+        if(this.errorOnFail === false) {           
+            this.casper.exit(~~status);        
+        } else {
+            this.casper.exit(status ? ~~status : exitStatus);
+        }         
     }
 };
 
