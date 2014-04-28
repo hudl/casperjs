@@ -1535,6 +1535,7 @@ Casper.prototype.runStep = function runStep(step) {
     var skipLog = utils.isObject(step.options) && step.options.skipLog === true,
         stepInfo = f("Step %s %d/%d", step.name || "anonymous", this.step, this.steps.length),
         stepResult;
+    var start = new Date().getTime();
     function getCurrentSuiteId(casper) {
         try {
             return casper.test.getCurrentSuiteId();
@@ -1575,7 +1576,8 @@ Casper.prototype.runStep = function runStep(step) {
     }
     if (!skipLog) {
         this.emit('step.complete', stepResult);
-        this.log(stepInfo + f(": done in %dms.", new Date().getTime() - this.startTime), "info");
+        var duration = new Date().getTime() - start;
+        this.log(stepInfo + f(": done in %dms.", duration), "info");
     }
 };
 

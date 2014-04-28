@@ -153,6 +153,14 @@ XUnitExporter.prototype.getXML = function getXML() {
     return this._xml;
 };
 
+XUnitExporter.prototype.fileStarted = function (filename) {
+    
+};
+
+XUnitExporter.prototype.fileFinished = function (filename) {
+    
+};
+
 /**
  * Retrieves generated Xunit XML
  *
