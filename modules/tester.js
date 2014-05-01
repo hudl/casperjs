@@ -1635,10 +1635,9 @@ Tester.prototype.terminate = function(message) {
  */
 Tester.prototype.saveResults = function saveResults(filepath) {
     "use strict";
-    var exporter = require('xunit').create();
-    exporter.setResults(this.suiteResults);
+    this.exporter.setResults(this.suiteResults);
     try {
-        fs.write(filepath, exporter.getSerializedXML(), 'w');
+        fs.write(filepath, this.exporter.getSerializedXML(), 'w');
         this.casper.echo(f('Result log stored in %s', filepath), 'INFO', 80);
     } catch (e) {
         this.casper.echo(f('Unable to write results to %s: %s', filepath, e), 'ERROR', 80);
