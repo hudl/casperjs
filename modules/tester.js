@@ -1178,7 +1178,7 @@ Tester.prototype.done = function done() {
         this.emit('test.done');
         this.casper.currentHTTPResponse = {};
         this.running = this.started = false;
-        this.exporter.fileFinished(this.currentTestFile);
+        //this.exporter.fileFinished(this.currentTestFile);
         var nextTest = this.queue.shift();
         if (nextTest) {
             this.begin.apply(this, nextTest);
@@ -1610,7 +1610,7 @@ Tester.prototype.runTest = function runTest(testFile) {
     this.bar(f('Test file: %s', testFile), 'INFO_BAR');
     this.running = true; // this.running is set back to false with done()
     this.executed = 0;
-    this.exporter.fileStarted(testFile);
+    //this.exporter.fileStarted(testFile);
     this.exec(testFile);
 };
 
@@ -1635,12 +1635,14 @@ Tester.prototype.terminate = function(message) {
  */
 Tester.prototype.saveResults = function saveResults(filepath) {
     "use strict";
-    this.exporter.setResults(this.suiteResults);
-    try {
-        fs.write(filepath, this.exporter.getSerializedXML(), 'w');
-        this.casper.echo(f('Result log stored in %s', filepath), 'INFO', 80);
-    } catch (e) {
-        this.casper.echo(f('Unable to write results to %s: %s', filepath, e), 'ERROR', 80);
+    if(casper.cli.get('exporter') != 'teamcity') {
+        this.exporter.setResults(this.suiteResults);
+        try {
+            fs.write(filepath, this.exporter.getSerializedXML(), 'w');
+            this.casper.echo(f('Result log stored in %s', filepath), 'INFO', 80);
+        } catch (e) {
+            this.casper.echo(f('Unable to write results to %s: %s', filepath, e), 'ERROR', 80);
+        }
     }
 };
 
