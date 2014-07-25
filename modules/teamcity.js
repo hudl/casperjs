@@ -115,8 +115,14 @@ exports.TeamCityExporter = TeamCityExporter;
  */
 TeamCityExporter.prototype.addSuccess = function addSuccess(classname, name, duration) {
     "use strict";
+
+    var suitename = generateClassName(classname);
+    console.log("##teamcity[testSuiteStarted name='" + escapeTeamCityText(suitename) + "' timestamp='" + getTeamCityNowDate() + "']");
+
     console.log("##teamcity[testStarted name='" + escapeTeamCityText(name) + "' captureStandardOutput='false' timestamp='" + getTeamCityEarlierDate(duration) + "' ]");
     console.log("##teamcity[testFinished name='" + escapeTeamCityText(name) + "' duration='" + duration + "' timestamp='" + getTeamCityNowDate() + "']");
+
+    console.log("##teamcity[testSuiteFinished name='" + escapeTeamCityText(suitename) + "' timestamp='" + getTeamCityNowDate() + "']");
 };
 
 /**
@@ -127,7 +133,7 @@ TeamCityExporter.prototype.addSuccess = function addSuccess(classname, name, dur
  * @param  String  message
  * @param  String  type
  */
-TeamCityExporter.prototype.addFailure = function addFailure(classname, name, message, type, duration, values) {
+TeamCityExporter.prototype.addFailure = function addFailure(classname, name, message, type, duration, values, site, buildNumber) {
     "use strict";
     var message = '', details = '';
     if (type) {
@@ -150,19 +156,28 @@ TeamCityExporter.prototype.addFailure = function addFailure(classname, name, mes
         }
     }
 
+    var suitename = generateClassName(classname);
+    console.log("##teamcity[testSuiteStarted name='" + escapeTeamCityText(suitename) + "' timestamp='" + getTeamCityNowDate() + "']");
+
     console.log("##teamcity[testStarted name='" + escapeTeamCityText(name) + "' captureStandardOutput='false' timestamp='" + getTeamCityEarlierDate(duration) + "']");
+    
+    // Used for Splunk
+    console.log("##teamcity[LogFailure name='" + escapeTeamCityText(suitename) + ' ' + escapeTeamCityText(name) + "' site='" + site + "' buildNumber='" + buildNumber + "' timestamp='" + getTeamCityNowDate() + "']");
+    
     console.log("##teamcity[testFailed name='" + escapeTeamCityText(name) + "' message='" + escapeTeamCityText(message) +"' details='" + escapeTeamCityText(details) + "' timestamp='" + getTeamCityNowDate() + "']");
     console.log("##teamcity[testFinished name='" + escapeTeamCityText(name) + "' duration='" + duration + "' timestamp='" + getTeamCityNowDate() + "']");
+
+    console.log("##teamcity[testSuiteFinished name='" + escapeTeamCityText(suitename) + "' timestamp='" + getTeamCityNowDate() + "']");
 };
 
 TeamCityExporter.prototype.fileStarted = function (filename) {
     var suitename = generateClassName(filename);
-    console.log("##teamcity[testSuiteStarted name='" + escapeTeamCityText(suitename) + "' timestamp='" + getTeamCityNowDate() + "']");
+   // console.log("##teamcity[testSuiteStarted name='" + escapeTeamCityText(suitename) + "' timestamp='" + getTeamCityNowDate() + "']");
 };
 
 TeamCityExporter.prototype.fileFinished = function (filename) {
     var suitename = generateClassName(filename);
-    console.log("##teamcity[testSuiteFinished name='" + escapeTeamCityText(suitename) + "' timestamp='" + getTeamCityNowDate() + "']");
+    //console.log("##teamcity[testSuiteFinished name='" + escapeTeamCityText(suitename) + "' timestamp='" + getTeamCityNowDate() + "']");
 };
 
 TeamCityExporter.prototype.setSuiteDuration = function setSuiteDuration(duration) {    
@@ -174,6 +189,16 @@ TeamCityExporter.prototype.setSuiteDuration = function setSuiteDuration(duration
  * @return HTMLElement
  */
 TeamCityExporter.prototype.getXML = function getXML() {
+    "use strict";
+    return '';
+};
+
+/**
+ * Sets test results.
+ *
+ * @param TestSuite  results
+ */
+TeamCityExporter.prototype.setResults = function setResults(results) {
     "use strict";
     return '';
 };

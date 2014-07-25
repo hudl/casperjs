@@ -125,6 +125,8 @@ var Tester = function Tester(casper, options) {
     this.suiteResults = new TestSuiteResult();
     this.exporter = require(casper.cli.get('exporter') || 'xunit').create();
     this.errorOnFail = casper.cli.get('error-on-failure'); 
+    this.buildNumber = casper.cli.get('buildNumber');
+    this.site = casper.cli.get('site'); 
 
     this.on('success', function onSuccess(success) {
         var timeElapsed = new Date() - this.currentTestStartTime;
@@ -150,7 +152,7 @@ var Tester = function Tester(casper, options) {
             failure.standard || "test failed",
             failure.type     || "unknown",
             (timeElapsed - this.lastAssertTime),
-            failure.values
+            failure.values,this.site,this.buildNumber
         );
 
         this.lastAssertTime = timeElapsed;
@@ -1635,13 +1637,14 @@ Tester.prototype.terminate = function(message) {
  */
 Tester.prototype.saveResults = function saveResults(filepath) {
     "use strict";
-    var exporter = require('xunit').create();
-    exporter.setResults(this.suiteResults);
-    try {
-        fs.write(filepath, exporter.getSerializedXML(), 'w');
-        this.casper.echo(f('Result log stored in %s', filepath), 'INFO', 80);
-    } catch (e) {
-        this.casper.echo(f('Unable to write results to %s: %s', filepath, e), 'ERROR', 80);
+    if(casper.cli.get('exporter') != 'teamcity') {
+        this.exporter.setResults(this.suiteResults);
+        try {
+            fs.write(filepath, this.exporter.getSerializedXML(), 'w');
+            this.casper.echo(f('Result log stored in %s', filepath), 'INFO', 80);
+        } catch (e) {
+            this.casper.echo(f('Unable to write results to %s: %s', filepath, e), 'ERROR', 80);
+        }
     }
 };
 
