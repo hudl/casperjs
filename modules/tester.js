@@ -1180,7 +1180,7 @@ Tester.prototype.done = function done() {
         this.emit('test.done');
         this.casper.currentHTTPResponse = {};
         this.running = this.started = false;
-        this.exporter.fileFinished(this.currentTestFile);
+        //this.exporter.fileFinished(this.currentTestFile);
         var nextTest = this.queue.shift();
         if (nextTest) {
             this.begin.apply(this, nextTest);
@@ -1612,7 +1612,7 @@ Tester.prototype.runTest = function runTest(testFile) {
     this.bar(f('Test file: %s', testFile), 'INFO_BAR');
     this.running = true; // this.running is set back to false with done()
     this.executed = 0;
-    this.exporter.fileStarted(testFile);
+    //this.exporter.fileStarted(testFile);
     this.exec(testFile);
 };
 
