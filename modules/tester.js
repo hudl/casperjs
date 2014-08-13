@@ -1539,7 +1539,6 @@ Tester.prototype.renderResults = function renderResults(exit, status, save) {
     this.casper.echo(result, style, this.options.pad);
     this.renderFailureDetails();
     if (save) {
-    	this.casper.echo('DEBUG: IN SAVE');
         this.saveResults(save);
     }
     if (exit === true) {
