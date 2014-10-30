@@ -129,6 +129,7 @@ var Casper = function Casper(options) {
         verbose:             false,
         retryTimeout:        20,
         waitTimeout:         5000,
+        retryFactor:         1,
         clipRect : null,
         viewportSize : null
     };
@@ -2085,6 +2086,7 @@ Casper.prototype.waitFor = function waitFor(testFx, then, onTimeout, timeout, de
     "use strict";
     this.checkStarted();
     timeout = timeout || this.options.waitTimeout;
+    timeout = (timeout * this.options.retryFactor)
     details = details || { testFx: testFx };
     if (!utils.isFunction(testFx)) {
         throw new CasperError("waitFor() needs a test function");

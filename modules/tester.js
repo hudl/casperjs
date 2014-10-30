@@ -100,6 +100,7 @@ var Tester = function Tester(casper, options) {
     this._tearDown = undefined;
     this.aborted = false;
     this.executed = 0;
+    this.loop = 0;
     this.currentTestFile = null;
     this.currentTestStartTime = new Date();
     this.currentSuite = undefined;
@@ -146,7 +147,9 @@ var Tester = function Tester(casper, options) {
 
         if(this.loop < 2 && this.retryFailure){
             this.loop++;
+            casper.options.retryFactor += 0.5;
             casper.echo('Caught failure, retry attempt: ' + this.loop + ' of 2');
+            casper.echo('Bumping waitTime to factor: ' + casper.options.retryFactor);
             this.exporter.fileFinished(this.currentTestFile);
             self.runTest(this.currentTestFile);
         }
