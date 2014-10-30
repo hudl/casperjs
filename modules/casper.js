@@ -129,6 +129,7 @@ var Casper = function Casper(options) {
         verbose:             false,
         retryTimeout:        20,
         waitTimeout:         5000,
+        retryFactor:         1,
         clipRect : null,
         viewportSize : null
     };
@@ -1535,6 +1536,7 @@ Casper.prototype.runStep = function runStep(step) {
     var skipLog = utils.isObject(step.options) && step.options.skipLog === true,
         stepInfo = f("Step %s %d/%d", step.name || "anonymous", this.step, this.steps.length),
         stepResult;
+    var start = new Date().getTime();
     function getCurrentSuiteId(casper) {
         try {
             return casper.test.getCurrentSuiteId();
@@ -1575,7 +1577,8 @@ Casper.prototype.runStep = function runStep(step) {
     }
     if (!skipLog) {
         this.emit('step.complete', stepResult);
-        this.log(stepInfo + f(": done in %dms.", new Date().getTime() - this.startTime), "info");
+        var duration = new Date().getTime() - start;
+        this.log(stepInfo + f(": done in %dms.", duration), "info");
     }
 };
 
@@ -2083,6 +2086,7 @@ Casper.prototype.waitFor = function waitFor(testFx, then, onTimeout, timeout, de
     "use strict";
     this.checkStarted();
     timeout = timeout || this.options.waitTimeout;
+    timeout = (timeout * this.options.retryFactor)
     details = details || { testFx: testFx };
     if (!utils.isFunction(testFx)) {
         throw new CasperError("waitFor() needs a test function");

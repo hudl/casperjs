@@ -100,6 +100,7 @@ var Tester = function Tester(casper, options) {
     this._tearDown = undefined;
     this.aborted = false;
     this.executed = 0;
+    this.loop = 0;
     this.currentTestFile = null;
     this.currentTestStartTime = new Date();
     this.currentSuite = undefined;
@@ -123,10 +124,16 @@ var Tester = function Tester(casper, options) {
     this.running = false;
     this.started = false;
     this.suiteResults = new TestSuiteResult();
+    this.exporter = require(casper.cli.get('exporter') || 'xunit').create();
+    this.errorOnFail = casper.cli.get('error-on-failure');
+    this.retryFailure = casper.cli.get('retry-failures'); 
+    this.buildNumber = casper.cli.get('buildNumber');
+    this.site = casper.cli.get('site'); 
 
     this.on('success', function onSuccess(success) {
         var timeElapsed = new Date() - this.currentTestStartTime;
         this.currentSuite.addSuccess(success, timeElapsed - this.lastAssertTime);
+        this.exporter.addSuccess(fs.absolute(success.file), success.message || success.standard, timeElapsed - this.lastAssertTime);
         this.lastAssertTime = timeElapsed;
     });
 
@@ -137,30 +144,49 @@ var Tester = function Tester(casper, options) {
     });
 
     this.on('fail', function onFail(failure) {
-        // export
-        var valueKeys = Object.keys(failure.values),
-            timeElapsed = new Date() - this.currentTestStartTime;
-        this.currentSuite.addFailure(failure, timeElapsed - this.lastAssertTime);
-        this.lastAssertTime = timeElapsed;
-        // special printing
-        if (failure.type) {
-            this.comment('   type: ' + failure.type);
+
+        if(this.loop < 2 && this.retryFailure){
+            this.loop++;
+            casper.options.retryFactor += 0.5;
+            casper.echo('Caught failure, retry attempt: ' + this.loop + ' of 2');
+            casper.echo('Bumping waitTime to factor: ' + casper.options.retryFactor);
+            self.runTest(this.currentTestFile);
         }
-        if (failure.file) {
-            this.comment('   file: ' + failure.file + (failure.line ? ':' + failure.line : ''));
-        }
-        if (failure.lineContents) {
-            this.comment('   code: ' + failure.lineContents);
-        }
-        if (!failure.values || valueKeys.length === 0) {
-            return;
-        }
-        valueKeys.forEach(function(name) {
-            this.comment(f('   %s: %s', name, utils.formatTestValue(failure.values[name], name)));
-        }.bind(this));
-        // check for fast failing
-        if (this.options.failFast) {
-            return this.terminate('--fail-fast: aborted all remaining tests');
+        else {
+            // export
+            var valueKeys = Object.keys(failure.values),
+                timeElapsed = new Date() - this.currentTestStartTime;
+            this.currentSuite.addFailure(failure, timeElapsed - this.lastAssertTime);
+            this.exporter.addFailure(
+                fs.absolute(failure.file),
+                failure.message  || failure.standard,
+                failure.standard || "test failed",
+                failure.type     || "unknown",
+                (timeElapsed - this.lastAssertTime),
+                failure.values, this.site, this.buildNumber
+            );
+
+            this.lastAssertTime = timeElapsed;
+            // special printing
+            if (failure.type) {
+                this.comment('   type: ' + failure.type);
+            }
+            if (failure.file) {
+                this.comment('   file: ' + failure.file + (failure.line ? ':' + failure.line : ''));
+            }
+            if (failure.lineContents) {
+                this.comment('   code: ' + failure.lineContents);
+            }
+            if (!failure.values || valueKeys.length === 0) {
+                return;
+            }
+            valueKeys.forEach(function(name) {
+                this.comment(f('   %s: %s', name, utils.formatTestValue(failure.values[name], name)));
+            }.bind(this));
+            // check for fast failing
+            if (this.options.failFast) {
+                return this.terminate('--fail-fast: aborted all remaining tests');
+            }
         }
     });
 
@@ -1166,6 +1192,7 @@ Tester.prototype.done = function done() {
         this.emit('test.done');
         this.casper.currentHTTPResponse = {};
         this.running = this.started = false;
+        this.exporter.fileFinished(this.currentTestFile);
         var nextTest = this.queue.shift();
         if (nextTest) {
             this.begin.apply(this, nextTest);
@@ -1528,7 +1555,7 @@ Tester.prototype.renderResults = function renderResults(exit, status, save) {
     }
     if (exit === true) {
         this.emit("exit");
-        this.casper.exit(status ? ~~status : exitStatus);
+        this.casper.exit(~~status);        
     }
 };
 
@@ -1593,6 +1620,7 @@ Tester.prototype.runTest = function runTest(testFile) {
     this.bar(f('Test file: %s', testFile), 'INFO_BAR');
     this.running = true; // this.running is set back to false with done()
     this.executed = 0;
+    this.exporter.fileStarted(testFile);
     this.exec(testFile);
 };
 
@@ -1617,13 +1645,14 @@ Tester.prototype.terminate = function(message) {
  */
 Tester.prototype.saveResults = function saveResults(filepath) {
     "use strict";
-    var exporter = require('xunit').create();
-    exporter.setResults(this.suiteResults);
-    try {
-        fs.write(filepath, exporter.getSerializedXML(), 'w');
-        this.casper.echo(f('Result log stored in %s', filepath), 'INFO', 80);
-    } catch (e) {
-        this.casper.echo(f('Unable to write results to %s: %s', filepath, e), 'ERROR', 80);
+    if(casper.cli.get('exporter') != 'teamcity') {
+        this.exporter.setResults(this.suiteResults);
+        try {
+            fs.write(filepath, this.exporter.getSerializedXML(), 'w');
+            this.casper.echo(f('Result log stored in %s', filepath), 'INFO', 80);
+        } catch (e) {
+            this.casper.echo(f('Unable to write results to %s: %s', filepath, e), 'ERROR', 80);
+        }
     }
 };
 
