@@ -778,7 +778,6 @@
                         dataList.push(encodeURIComponent(k) + "=" + encodeURIComponent(data[k].toString()));
                     }
                     dataString = dataList.join('&');
-                    this.log("sendAJAX(): Using request data: '" + dataString + "'", "debug");
                 } else if (typeof data === "string") {
                     dataString = data;
                 }
