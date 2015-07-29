@@ -127,6 +127,7 @@ var Casper = function Casper(options) {
         verbose:             false,
         retryTimeout:        20,
         waitTimeout:         5000,
+        retryFactor:         1,
         clipRect : null,
         viewportSize : null
     };
