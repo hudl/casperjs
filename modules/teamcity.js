@@ -68,6 +68,10 @@ function generateClassName(classname) {
 
 function escapeTeamCityText(text) {
     try{
+        if(typeof text === 'undefined') {
+            text = 'text was undefined';
+        }
+
         text = text.replace(/\|/g, "||");
         text = text.replace(/\'/g, "|'");
         text = text.replace(/\n/g, "|n");
