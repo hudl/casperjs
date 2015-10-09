@@ -72,6 +72,10 @@ function escapeTeamCityText(text) {
             text = 'text was undefined';
         }
 
+        if(text === null) {
+            text = 'text was null';
+        }
+
         text = text.replace(/\|/g, "||");
         text = text.replace(/\'/g, "|'");
         text = text.replace(/\n/g, "|n");
