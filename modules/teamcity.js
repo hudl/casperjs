@@ -67,12 +67,25 @@ function generateClassName(classname) {
 
 
 function escapeTeamCityText(text) {
-    text = text.replace(/\|/g,"||");
-    text = text.replace(/\'/g,"|'");
-    text = text.replace(/\n/g,"|n");
-    text = text.replace(/\r/g,"|r");
-    text = text.replace(/\[/g,"|[");
-    text = text.replace(/\]/g,"|]");
+    try{
+        if(typeof text === 'undefined') {
+            text = 'text was undefined';
+        }
+
+        if(text === null) {
+            text = 'text was null';
+        }
+
+        text = text.replace(/\|/g, "||");
+        text = text.replace(/\'/g, "|'");
+        text = text.replace(/\n/g, "|n");
+        text = text.replace(/\r/g, "|r");
+        text = text.replace(/\[/g, "|[");
+        text = text.replace(/\]/g, "|]");
+    }
+    catch(e){
+        text = e.toString();
+    }
     return text;
 }
 
