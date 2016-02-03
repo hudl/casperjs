@@ -28,6 +28,7 @@
  *
  */
 
+/*global __utils__, CasperError, console, exports, phantom, patchRequire, require:true*/
 var require = patchRequire(require);
 var colorizer = require('colorizer');
 var events = require('events');
@@ -196,6 +197,10 @@ var Casper = function Casper(options) {
             notices.push('  in module ' + match[2]);
             msg = match[3];
         }
+        /* FIXME:
+        this leads to a recursive on('error'...) trigger,
+        at least in phantomjs2
+
         console.error(c.colorize(msg, 'RED_BAR', 80));
         notices.forEach(function(notice) {
             console.error(c.colorize(notice, 'COMMENT'));
@@ -207,6 +212,7 @@ var Casper = function Casper(options) {
             }
             console.error("  " + message);
         });
+        */
     });
 
     // deprecated feature event handler
@@ -958,6 +964,9 @@ Casper.prototype.getPageContent = function getPageContent() {
     if (!utils.isString(contentType) || contentType.indexOf("text/html") !== -1) {
         return this.page.frameContent;
     }
+    // FIXME: with slimerjs this will work only for
+    // text/* and application/json content types.
+    // see FIXME in slimerjs src/modules/webpageUtils.jsm getWindowContent
     return this.page.framePlainText;
 };
 
@@ -1499,8 +1508,6 @@ Casper.prototype.resourceExists = function resourceExists(test) {
             break;
         case "function":
             testFn = test;
-            if (phantom.casperEngine !== "slimerjs")
-                testFn.name = "_testResourceExists_Function";
             break;
         default:
             throw new CasperError("Invalid type");
@@ -2100,7 +2107,7 @@ Casper.prototype.waitFor = function waitFor(testFx, then, onTimeout, timeout, de
         var start = new Date().getTime();
         var condition = false;
         var interval = setInterval(function _check(self) {
-            /*eslint max-statements:20*/
+            /*eslint max-statements: [1, 20]*/
             if ((new Date().getTime() - start < timeout) && !condition) {
                 condition = testFx.call(self, self);
                 return;

@@ -7,7 +7,7 @@ Writing CasperJS modules
 
 As of 1.1, CasperJS relies on PhantomJS' native ``require()`` function internally though it had to be patched in order to allow requiring casper modules using their full name, eg. ``require('casper')``.
 
-So if you plan to write your own modules and uses casperjs' ones from them, be sure to call the ``patchRequire()`` function::
+So if you plan to write your own modules and use casperjs' ones from them, be sure to call the ``patchRequire()`` function::
 
     // my module, stored in universe.js
     // patching phantomjs' require()
@@ -40,7 +40,7 @@ From your root casper script::
 
 .. hint::
 
-    Like PhantomJS, CasperJS allows using nodejs modules installed through npm_.
+    CasperJS allows using nodejs modules installed through npm_. Note that since CasperJS uses it's own JavaScript environment, npm modules that use node-specific features will not work under CasperJS.
 
 As an example, let's install the underscore_ library:
 
