@@ -1,5 +1,4 @@
-/*global casper*/
-/*jshint strict:false*/
+/*eslint strict:0*/
 var fs = require('fs');
 var x = require('casper').selectXPath;
 
@@ -135,6 +134,35 @@ casper.test.begin('ClientUtils.getElementBounds() tests', 3, function(test) {
             bounds[1],
             { top: 20, left: 21, width: 70, height: 80 },
             'ClientUtils.getElementsBounds() retrieves multiple elements boundaries'
+        );
+    });
+    casper.run(function() {
+        test.done();
+    });
+});
+
+casper.test.begin('ClientUtils.getElementBounds() page zoom factor tests', 3, function(test) {
+    casper.start().zoom(2).then(function() {
+        var html  = '<div id="boxes">';
+            html += '  <div id="b1" style="position:fixed;top:10px;left:11px;width:50px;height:60px"></div>';
+            html += '  <div style="position:fixed;top:20px;left:21px;width:70px;height:80px"></div>';
+            html += '</div>';
+        this.page.content = html;
+        test.assertEquals(
+            this.getElementBounds('#b1'),
+            { top: 20, left: 22, width: 100, height: 120 },
+            'ClientUtils.getElementBounds() is aware of the page zoom factor'
+        );
+        var bounds = this.getElementsBounds('#boxes div');
+        test.assertEquals(
+            bounds[0],
+            { top: 20, left: 22, width: 100, height: 120 },
+            'ClientUtils.getElementsBounds() is aware of the page zoom factor'
+        );
+        test.assertEquals(
+            bounds[1],
+            { top: 40, left: 42, width: 140, height: 160 },
+            'ClientUtils.getElementsBounds() is aware of the page zoom factor'
         );
     });
     casper.run(function() {

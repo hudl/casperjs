@@ -1,5 +1,4 @@
-/*global casper*/
-/*jshint strict:false*/
+/*eslint strict:0*/
 casper.test.begin("Basic resources tests", 5, function(test) {
   casper.start("tests/site/resources.html", function() {
     test.assertEquals(this.resources.length, 1, "only one resource found");
@@ -11,7 +10,7 @@ casper.test.begin("Basic resources tests", 5, function(test) {
     test.assertResourceExists(function(res) {
       return res.url.match("dummy.js");
     }, "phantom image found via test Function");
-    test.assertResourceExists("dummy.js", "phantom image found via test String");
+    test.assertResourceExists("dummy.js?querystring", "phantom image found via test String");
   }, function onTimeout() {
     test.fail("waitForResource timeout occured");
   });

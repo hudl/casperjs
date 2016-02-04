@@ -187,9 +187,9 @@ Options are prefixed with a double-dash (``--``):
 
 .. versionadded:: 1.0
 
-- ``--includes=foo.js,bar.js`` will include the ``foo.js`` and  ``bar.js`` files before each test file execution;
-- ``--pre=pre-test.js`` will add the tests contained in ``pre-test.js`` **before** executing the whole test suite;
-- ``--post=post-test.js`` will add the tests contained in ``post-test.js`` **after** having executed the whole test suite;
+- ``--includes=foo.js,bar.js`` will include the ``foo.js`` and  ``bar.js`` files before each test file execution.
+- ``--pre=pre-test.js`` will add the tests contained in ``pre-test.js`` **before** executing the whole test suite.
+- ``--post=post-test.js`` will add the tests contained in ``post-test.js`` **after** having executed the whole test suite.
 - ``--fail-fast`` will terminate the current test suite as soon as a first failure is encountered.
 - ``--concise`` will create a more concise output of the test suite.
 - ``--no-colors`` will create an output without (beautiful) colors from casperjs.
@@ -242,6 +242,27 @@ You should get a pretty XUnit XML report like this:
             <testcase classname="googletesting" name="google title is ok" time="0.416"/>
             <testcase classname="googletesting" name="search term has been submitted" time="0.017"/>
             <testcase classname="googletesting" name="google search for &quot;casperjs&quot; retrieves 10 or more results" time="0.001"/>
+            <system-out/>
+        </testsuite>
+    </testsuites>
+
+You can customize the value for the `name` property by passing an object to `casper.test.fail()` like:
+
+.. code-block:: js
+
+    casper.test.fail('google search for "casperjs" retrieves 10 or more results', {name: 'result count is 10+'});
+
+.. code-block:: xml
+
+    <?xml version="1.0" encoding="UTF-8"?>
+    <testsuites duration="1.249">
+        <testsuite errors="0" failures="0" name="Google search retrieves 10 or more results" package="googletesting" tests="5" time="1.249" timestamp="2012-12-30T21:27:26.320Z">
+            <testcase classname="googletesting" name="google homepage title is the one expected" time="0.813"/>
+            <testcase classname="googletesting" name="main form is found" time="0.002"/>
+            <testcase classname="googletesting" name="google title is ok" time="0.416"/>
+            <testcase classname="googletesting" name="search term has been submitted" time="0.017"/>
+            <testcase classname="googletesting" name="results count is 10+" time="0.001"/>
+                <failure type="fail">google search for "casperjs" retrieves 10 or more results</failure>
             <system-out/>
         </testsuite>
     </testsuites>

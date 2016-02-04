@@ -23,6 +23,7 @@ class phantomjs : engine {
             "config",
             "debug",
             "disk-cache",
+            "disk-cache-path",
             "ignore-ssl-errors",
             "load-images",
             "load-plugins",
@@ -103,8 +104,14 @@ class casperjs {
             {"slimerjs", new slimerjs()}
         };
 
-        string ENGINE = "phantomjs";
+        string ENGINE = Environment.GetEnvironmentVariable("CASPERJS_ENGINE")
+                ?? "phantomjs";
         var ENGINE_ARGS = new List<string>();
+        string _ENGINE_FLAGS = Environment.GetEnvironmentVariable("ENGINE_FLAGS")
+                ?? null;
+        if(_ENGINE_FLAGS != null) {
+          ENGINE_ARGS.Add(_ENGINE_FLAGS);
+        }
         string[] ENGINE_NATIVE_ARGS = {};
         string ENGINE_EXECUTABLE = "";
 
@@ -122,6 +129,7 @@ class casperjs {
         if(SUPPORTED_ENGINES.ContainsKey(ENGINE)) {
             ENGINE_NATIVE_ARGS = SUPPORTED_ENGINES[ENGINE].native_args();
             ENGINE_EXECUTABLE = Environment.GetEnvironmentVariable(SUPPORTED_ENGINES[ENGINE].env_varname())
+                    ?? Environment.GetEnvironmentVariable("ENGINE_EXECUTABLE")
                     ?? SUPPORTED_ENGINES[ENGINE].default_exec();
         } else {
             Console.WriteLine("Bad engine name. Only phantomjs and slimerjs are supported");
@@ -142,7 +150,7 @@ class casperjs {
                     CASPER_ARGS.Add(arg);
         }
 
-        var ENGINE_EXEC = new List<string>(ENGINE_EXECUTABLE.Split(' '));
+        var ENGINE_EXEC = new List<string>(new [] {ENGINE_EXECUTABLE});
         var ENGINE_FILE = ENGINE_EXEC[0];
         ENGINE_EXEC.RemoveAt(0);
 

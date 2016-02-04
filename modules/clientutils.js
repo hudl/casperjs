@@ -28,7 +28,7 @@
  *
  */
 
-/*global console, escape, exports, NodeList, window*/
+/*global escape, NodeList*/
 
 (function(exports) {
     "use strict";
@@ -41,7 +41,7 @@
      * Casper client-side helpers.
      */
     exports.ClientUtils = function ClientUtils(options) {
-        /*jshint maxstatements:40*/
+        /*eslint max-statements:0, no-multi-spaces:0*/
         // private members
         var BASE64_ENCODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
         var BASE64_DECODE_CHARS = new Array(
@@ -96,7 +96,7 @@
          * @return string
          */
         this.decode = function decode(str) {
-            /*jshint maxstatements:30, maxcomplexity:30 */
+            /*eslint max-statements:0, complexity:0 */
             var c1, c2, c3, c4, i = 0, len = str.length, out = "";
             while (i < len) {
                 do {
@@ -168,7 +168,7 @@
                 return true;
             }
             return elem.clientHeight > 0 && elem.clientWidth > 0;
-        }
+        };
 
         /**
          * Base64 encodes a string, even binary ones. Succeeds where
@@ -178,7 +178,7 @@
          * @return string
          */
         this.encode = function encode(str) {
-            /*jshint maxstatements:30 */
+            /*eslint max-statements:0 */
             var out = "", i = 0, len = str.length, c1, c2, c3;
             while (i < len) {
                 c1 = str.charCodeAt(i++) & 0xff;
@@ -230,7 +230,7 @@
             var text = '', elements = this.findAll(selector);
             if (elements && elements.length) {
                 Array.prototype.forEach.call(elements, function _forEach(element) {
-                    text += element.textContent || element.innerText;
+                    text += element.textContent || element.innerText || element.value || '';
                 });
             }
             return text;
@@ -245,7 +245,7 @@
          * @return Object                        An object containing setting result for each field, including file uploads
          */
         this.fill = function fill(form, vals, findType) {
-            /*jshint maxcomplexity:8*/
+            /*eslint complexity:0*/
             var out = {
                 errors: [],
                 fields: [],
@@ -273,6 +273,12 @@
                 css: function(inputSelector, formSelector) {
                     return this.findAll(inputSelector, form);
                 },
+                labels: function(labelText, formSelector, value) {
+                    var label = this.findOne({type: "xpath", path: '//label[text()="' + labelText + '"]'}, form);
+                    if(label && label.htmlFor) {
+                        return this.findAll('#' + label.htmlFor, form);
+                    }
+                },
                 names: function(elementName, formSelector) {
                     return this.findAll('[name="' + elementName + '"]', form);
                 },
@@ -295,9 +301,15 @@
                     out.fields[fieldSelector] = this.setField(field, value);
                 } catch (err) {
                     if (err.name === "FileUploadError") {
+                        var selector;
+                        if(findType === "labels") {
+                          selector = '#' + field[0].id;
+                        } else {
+                          selector = fieldSelector;
+                        }
                         out.files.push({
                             type: findType,
-                            selector: fieldSelector,
+                            selector: selector,
                             path: err.path
                         });
                     } else if (err.name === "FieldNotFound") {
@@ -749,7 +761,7 @@
          */
         this.scrollToBottom = function scrollToBottom() {
             this.scrollTo(0, this.getDocumentHeight());
-        },
+        };
 
         /**
          * Performs an AJAX request.
@@ -796,7 +808,7 @@
          * @param  mixed                 value  The field value to set
          */
         this.setField = function setField(field, value) {
-            /*jshint maxcomplexity:99 */
+            /*eslint complexity:0*/
             var logValue, fields, out;
             value = logValue = (value || "");
 
@@ -813,7 +825,7 @@
 
             if (this.options && this.options.safeLogs && field.getAttribute('type') === "password") {
                 // obfuscate password value
-                logValue = new Array(value.length + 1).join("*");
+                logValue = new Array((''+value).length + 1).join("*");
             }
 
             this.log('Set "' + field.getAttribute('name') + '" field value to ' + logValue, "debug");
@@ -851,9 +863,13 @@
                             };
                         case "radio":
                             if (fields) {
-                                Array.prototype.forEach.call(fields, function _forEach(e) {
-                                    e.checked = (e.value === value);
-                                });
+                                if (fields.length > 1) {
+                                    Array.prototype.forEach.call(fields, function _forEach(e) {
+                                        e.checked = (e.value === value);
+                                    });
+                                } else {
+                                    field.checked = value ? true : false;
+                                }
                             } else {
                                 out = 'Provided radio elements are empty';
                             }
@@ -868,8 +884,27 @@
                         [].forEach.call(field.options, function(option) {
                             option.selected = value.indexOf(option.value) !== -1;
                         });
+                        // If the values can't be found, try search options text
+                        if (field.value === "") {
+                            [].forEach.call(field.options, function(option) {
+                                option.selected = value.indexOf(option.text) !== -1;
+                            });
+                        }
                     } else {
-                      field.value = value;
+                        // PhantomJS 1.x.x can't handle setting value to ''
+                        if ('' === value) {
+                            field.selectedIndex = -1;
+                        } else {
+                            field.value = value;
+                        }
+
+                        // If the value can't be found, try search options text
+                        if (field.value !== value) {
+                            [].some.call(field.options, function(option) {
+                                option.selected = value === option.text;
+                                return value === option.text;
+                            });
+                        }
                     }
                     break;
                 case "textarea":

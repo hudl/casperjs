@@ -1,5 +1,4 @@
-/*global casper*/
-/*jshint strict:false*/
+/*eslint strict:0*/
 var server = require('webserver').create();
 var service = server.listen(8090, function(request, response) {
     response.statusCode = 200;
@@ -9,7 +8,7 @@ var service = server.listen(8090, function(request, response) {
     response.close();
 });
 
-casper.test.begin('Link Navigation updates response', function(test) {
+casper.test.begin('Link Navigation updates response', 2, function(test) {
     casper.start('http://localhost:8090', function(response) {
         casper.click('a');
         casper.then(function(response) {
@@ -29,7 +28,7 @@ casper.test.begin('Link Navigation updates response', function(test) {
     });
 });
 
-casper.test.begin('Form Submittal updates the response', function(test) {
+casper.test.begin('Form Submittal updates the response', 2, function(test) {
     casper.start('http://localhost:8090', function(response) {
         casper.fill('form', {}, true);
         casper.then(function(response) {

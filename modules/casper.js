@@ -28,8 +28,7 @@
  *
  */
 
-/*global CasperError, console, exports, phantom, __utils__, patchRequire, require:true*/
-
+/*global __utils__, CasperError, console, exports, phantom, patchRequire, require:true*/
 var require = patchRequire(require);
 var colorizer = require('colorizer');
 var events = require('events');
@@ -84,7 +83,7 @@ exports.selectXPath = selectXPath;
  */
 var Casper = function Casper(options) {
     "use strict";
-    /*jshint maxstatements:40*/
+    /*eslint max-statements:0*/
     // init & checks
     if (!(this instanceof Casper)) {
         return new Casper(options);
@@ -129,6 +128,7 @@ var Casper = function Casper(options) {
         verbose:             false,
         retryTimeout:        20,
         waitTimeout:         5000,
+        retryFactor:         1,
         clipRect : null,
         viewportSize : null
     };
@@ -179,7 +179,9 @@ var Casper = function Casper(options) {
             throw new CasperError('casper.test property is only available using the `casperjs test` command');
         }
         if (!utils.isObject(this._test)) {
-            this._test = tester.create(this);
+            this._test = tester.create(this, {
+                concise: this.cli.get('concise')
+            });
         }
         return this._test;
     });
@@ -195,6 +197,10 @@ var Casper = function Casper(options) {
             notices.push('  in module ' + match[2]);
             msg = match[3];
         }
+        /* FIXME:
+        this leads to a recursive on('error'...) trigger,
+        at least in phantomjs2
+
         console.error(c.colorize(msg, 'RED_BAR', 80));
         notices.forEach(function(notice) {
             console.error(c.colorize(notice, 'COMMENT'));
@@ -206,6 +212,7 @@ var Casper = function Casper(options) {
             }
             console.error("  " + message);
         });
+        */
     });
 
     // deprecated feature event handler
@@ -218,7 +225,7 @@ var Casper = function Casper(options) {
 
     // deprecated direct option
     if (this.cli.has('direct')) {
-        this.emit("deprecated", "--direct option has been deprecated since 1.1; you should use --verbose instead.")
+        this.emit("deprecated", "--direct option has been deprecated since 1.1; you should use --verbose instead.");
     }
 };
 
@@ -233,11 +240,9 @@ utils.inherits(Casper, events.EventEmitter);
 Casper.prototype.back = function back() {
     "use strict";
     this.checkStarted();
-    return this.then(function _step() {
+    return this.then(function() {
         this.emit('back');
-        this.evaluate(function _evaluate() {
-            history.back();
-        });
+        this.page.goBack();
     });
 };
 
@@ -305,7 +310,7 @@ Casper.prototype.callUtils = function callUtils(method) {
  */
 Casper.prototype.capture = function capture(targetFile, clipRect, imgOptions) {
     "use strict";
-    /*jshint maxstatements:20*/
+    /*eslint max-statements:0*/
     this.checkStarted();
     var previousClipRect;
     targetFile = fs.absolute(targetFile);
@@ -344,7 +349,7 @@ Casper.prototype.capture = function capture(targetFile, clipRect, imgOptions) {
  */
 Casper.prototype.captureBase64 = function captureBase64(format, area) {
     "use strict";
-    /*jshint maxstatements:20*/
+    /*eslint max-statements:0*/
     this.checkStarted();
     var base64, previousClipRect, formats = ['bmp', 'jpg', 'jpeg', 'png', 'ppm', 'tiff', 'xbm', 'xpm'];
     if (formats.indexOf(format.toLowerCase()) === -1) {
@@ -570,7 +575,7 @@ Casper.prototype.die = function die(message, status) {
     this.result.status = "error";
     this.result.time = new Date().getTime() - this.startTime;
     if (!utils.isString(message) || !message.length) {
-        message = "Suite explicitely interrupted without any message given.";
+        message = "Suite explicitly interrupted without any message given.";
     }
     this.log(message, "error");
     this.echo(message, "ERROR");
@@ -758,7 +763,7 @@ Casper.prototype.exists = function exists(selector) {
 Casper.prototype.exit = function exit(status) {
     "use strict";
     this.emit('exit', status);
-    phantom.exit(status);
+    setTimeout(function() { phantom.exit(status); }, 0);
 };
 
 /**
@@ -823,7 +828,7 @@ Casper.prototype.fillForm = function fillForm(selector, vals, options) {
                 var fileFieldSelector;
                 if (file.type === "names") {
                     fileFieldSelector = [selector, 'input[name="' + file.selector + '"]'].join(' ');
-                } else if (file.type === "css") {
+                } else if (file.type === "css" || file.type === "labels") {
                     fileFieldSelector = [selector, file.selector].join(' ');
                 }
                 this.page.uploadFile(fileFieldSelector, file.path);
@@ -851,7 +856,7 @@ Casper.prototype.fillForm = function fillForm(selector, vals, options) {
             }
         }, selector);
     }
-}
+};
 
 /**
  * Fills a form with provided field values using the Name attribute.
@@ -865,6 +870,21 @@ Casper.prototype.fillNames = function fillNames(formSelector, vals, submit) {
     return this.fillForm(formSelector, vals, {
         submit: submit,
         selectorType: 'names'
+    });
+};
+
+/**
+ * Fills a form with provided field values using associated label text.
+ *
+ * @param  String  formSelector  A DOM CSS3/XPath selector to the target form to fill
+ * @param  Object  vals          Field values
+ * @param  Boolean submit        Submit the form?
+ */
+Casper.prototype.fillLabels = function fillLabels(formSelector, vals, submit) {
+    "use strict";
+    return this.fillForm(formSelector, vals, {
+        submit: submit,
+        selectorType: 'labels'
     });
 };
 
@@ -915,11 +935,9 @@ Casper.prototype.fillXPath = function fillXPath(formSelector, vals, submit) {
 Casper.prototype.forward = function forward() {
     "use strict";
     this.checkStarted();
-    return this.then(function _step() {
+    return this.then(function() {
         this.emit('forward');
-        this.evaluate(function _evaluate() {
-            history.forward();
-        });
+        this.page.goForward();
     });
 };
 
@@ -943,36 +961,13 @@ Casper.prototype.getPageContent = function getPageContent() {
     "use strict";
     this.checkStarted();
     var contentType = utils.getPropertyPath(this, 'currentResponse.contentType');
-    if (!utils.isString(contentType)) {
+    if (!utils.isString(contentType) || contentType.indexOf("text/html") !== -1) {
         return this.page.frameContent;
     }
-    // for some reason (qt)webkit/Gecko will always enclose non text/html body contents within an html
-    // structure like this:
-    // webkit: <html><head></head><body><pre style="(...)">content</pre></body></html>
-    // gecko: <html><head><link rel="alternate stylesheet" type="text/css" href="resource://gre-resources/plaintext.css" title="..."></head><body><pre>document.write('foo');\n</pre></body></html>
-    var sanitizedHtml = this.evaluate(function checkHtml() {
-        var head = __utils__.findOne('head'),
-            body = __utils__.findOne('body');
-        if (!head || !body) {
-            return null;
-        }
-        // for content in Webkit
-        if (head.childNodes.length === 0 &&
-            body.childNodes.length === 1 &&
-            __utils__.findOne('body pre[style]')) {
-            return __utils__.findOne('body pre').textContent.trim();
-        }
-        // for content in Gecko
-        if (head.childNodes.length === 1 &&
-            body.childNodes.length === 1 &&
-            head.childNodes[0].localName === 'link' &&
-            head.childNodes[0].getAttribute('href') === 'resource://gre-resources/plaintext.css' &&
-            body.childNodes[0].localName === 'pre' ) {
-            return body.childNodes[0].textContent.trim();
-        }
-        return null;
-    });
-    return sanitizedHtml ? sanitizedHtml : this.page.frameContent;
+    // FIXME: with slimerjs this will work only for
+    // text/* and application/json content types.
+    // see FIXME in slimerjs src/modules/webpageUtils.jsm getWindowContent
+    return this.page.framePlainText;
 };
 
 /**
@@ -1033,7 +1028,7 @@ Casper.prototype.getElementsAttr = function getElementsAttr(selector, attribute)
             return element.getAttribute(attribute);
         });
     }, selector, attribute);
-}
+};
 
 /**
  * Retrieves boundaries for a DOM element matching the provided DOM CSS3/XPath selector.
@@ -1047,7 +1042,15 @@ Casper.prototype.getElementBounds = function getElementBounds(selector) {
     if (!this.exists(selector)) {
         throw new CasperError("No element matching selector found: " + selector);
     }
+    var zoomFactor = this.page.zoomFactor || 1;
     var clipRect = this.callUtils("getElementBounds", selector);
+    if (zoomFactor !== 1) {
+        for (var prop in clipRect) {
+            if (clipRect.hasOwnProperty(prop)) {
+                clipRect[prop] = clipRect[prop] * zoomFactor;
+            }
+        }
+    }
     if (!utils.isClipRect(clipRect)) {
         throw new CasperError('Could not fetch boundaries for element matching selector: ' + selector);
     }
@@ -1090,13 +1093,24 @@ Casper.prototype.getElementsInfo = function getElementsInfo(selector) {
  * @param  String  selector  A DOM CSS3/XPath selector
  * @return Array
  */
-Casper.prototype.getElementsBounds = function getElementBounds(selector) {
+Casper.prototype.getElementsBounds = function getElementsBounds(selector) {
     "use strict";
     this.checkStarted();
     if (!this.exists(selector)) {
         throw new CasperError("No element matching selector found: " + selector);
     }
-    return this.callUtils("getElementsBounds", selector);
+    var zoomFactor = this.page.zoomFactor || 1;
+    var clipRects = this.callUtils("getElementsBounds", selector);
+    if (zoomFactor !== 1) {
+        Array.prototype.forEach.call(clipRects, function(clipRect) {
+            for (var prop in clipRect) {
+                if (clipRect.hasOwnProperty(prop)) {
+                    clipRect[prop] = clipRect[prop] * zoomFactor;
+                }
+            }
+        });
+    }
+    return clipRects;
 };
 
 /**
@@ -1186,7 +1200,7 @@ Casper.prototype.getTitle = function getTitle() {
  */
 Casper.prototype.handleReceivedResource = function(resource) {
     "use strict";
-    /*jshint maxstatements:20*/
+    /*eslint max-statements:0*/
     if (resource.stage !== "end") {
         return;
     }
@@ -1247,7 +1261,7 @@ Casper.prototype.injectClientScripts = function injectClientScripts() {
         if (this.page.injectJs(script)) {
             this.log(f('Automatically injected %s client side', script), "debug");
         } else {
-            this.warn('Failed injecting %s client side', script);
+            this.warn(f('Failed injecting %s client side', script));
         }
     }.bind(this));
     return this;
@@ -1390,7 +1404,7 @@ Casper.prototype.mouseEvent = function mouseEvent(type, selector) {
  */
 Casper.prototype.open = function open(location, settings) {
     "use strict";
-    /*jshint maxstatements:30*/
+    /*eslint max-statements:0*/
     var baseCustomHeaders = this.page.customHeaders,
         customHeaders = settings && settings.headers || {};
     this.checkStarted();
@@ -1405,7 +1419,7 @@ Casper.prototype.open = function open(location, settings) {
     // http data
     if (settings.data) {
         if (utils.isObject(settings.data)) { // query object
-            if (settings.headers && settings.headers["Content-Type"].match(/application\/json/)) {
+            if (settings.headers && settings.headers["Content-Type"] && settings.headers["Content-Type"].match(/application\/json/)) {
                 settings.data = JSON.stringify(settings.data); // convert object to JSON notation
             } else {
                 settings.data = qs.encode(settings.data); // escapes all characters except alphabetic, decimal digits and ,-_.!~*'()
@@ -1445,9 +1459,8 @@ Casper.prototype.open = function open(location, settings) {
 Casper.prototype.reload = function reload(then) {
     "use strict";
     this.checkStarted();
-    // window.location.reload() is broken under phantomjs
     this.then(function() {
-        this.open(this.getCurrentUrl());
+        this.page.reload();
     });
     if (utils.isFunction(then)) {
         this.then(this.createStep(then));
@@ -1485,7 +1498,7 @@ Casper.prototype.resourceExists = function resourceExists(test) {
     switch (utils.betterTypeOf(test)) {
         case "string":
             testFn = function _testResourceExists_String(res) {
-                return res.url.search(test) !== -1 && res.status !== 404;
+                return res.url.indexOf(test) !== -1 && res.status !== 404;
             };
             break;
         case "regexp":
@@ -1495,8 +1508,6 @@ Casper.prototype.resourceExists = function resourceExists(test) {
             break;
         case "function":
             testFn = test;
-            if (phantom.casperEngine !== "slimerjs")
-                testFn.name = "_testResourceExists_Function";
             break;
         default:
             throw new CasperError("Invalid type");
@@ -1530,7 +1541,7 @@ Casper.prototype.run = function run(onComplete, time) {
  */
 Casper.prototype.runStep = function runStep(step) {
     "use strict";
-    /*jshint maxstatements:20*/
+    /*eslint max-statements:0*/
     this.checkStarted();
     var skipLog = utils.isObject(step.options) && step.options.skipLog === true,
         stepInfo = f("Step %s %d/%d", step.name || "anonymous", this.step, this.steps.length),
@@ -1622,7 +1633,7 @@ Casper.prototype.sendKeys = function(selector, keys, options) {
         this.click(selector);
     }
     var modifiers = utils.computeModifier(options && options.modifiers,
-                                          this.page.event.modifier)
+                                          this.page.event.modifier);
     this.page.sendEvent(options.eventType, keys, null, null, modifiers);
     if (isTextInput && !options.keepFocus) {
         // remove the focus
@@ -1694,7 +1705,7 @@ Casper.prototype.setHttpAuth = function setHttpAuth(username, password) {
  */
 Casper.prototype.start = function start(location, then) {
     "use strict";
-    /*jshint maxstatements:30*/
+    /*eslint max-statements:0*/
     this.emit('starting');
     this.log('Starting...', "info");
     this.startTime = new Date().getTime();
@@ -1813,14 +1824,14 @@ Casper.prototype.thenClick = function thenClick(selector, then) {
  * current retrieved page DOM.
  *
  * @param  function  fn       The function to be evaluated within current page DOM
- * @param  object    context  Optional function parameters context
+ * @param  Array     args...  The rest of arguments passed to fn
  * @return Casper
  * @see    Casper#evaluate
  */
-Casper.prototype.thenEvaluate = function thenEvaluate(fn, context) {
+Casper.prototype.thenEvaluate = function thenEvaluate(fn) {
     "use strict";
     this.checkStarted();
-    var args = [fn].concat([].slice.call(arguments, 1));
+    var args = arguments;
     return this.then(function _step() {
         this.evaluate.apply(this, args);
     });
@@ -1903,15 +1914,16 @@ Casper.prototype.thenBypassUnless = function thenBypassUnless(condition, nb) {
  *
  * @param  String    location  The url to open
  * @param  function  fn        The function to be evaluated within current page DOM
- * @param  object    context   Optional function parameters context
+ * @param  Array     args...   The rest of arguments will passed to the evaluate function
  * @return Casper
  * @see    Casper#evaluate
  * @see    Casper#open
  */
-Casper.prototype.thenOpenAndEvaluate = function thenOpenAndEvaluate(location, fn, context) {
+Casper.prototype.thenOpenAndEvaluate = function thenOpenAndEvaluate(location, fn) {
     "use strict";
     this.checkStarted();
-    return this.thenOpen(location).thenEvaluate(fn, context);
+    var args = [].slice.call(arguments, 1);
+    return this.thenOpen(location).thenEvaluate.apply(this, args);
 };
 
 /**
@@ -2095,7 +2107,7 @@ Casper.prototype.waitFor = function waitFor(testFx, then, onTimeout, timeout, de
         var start = new Date().getTime();
         var condition = false;
         var interval = setInterval(function _check(self) {
-            /*jshint maxstatements:20*/
+            /*eslint max-statements: [1, 20]*/
             if ((new Date().getTime() - start < timeout) && !condition) {
                 condition = testFx.call(self, self);
                 return;
@@ -2116,14 +2128,13 @@ Casper.prototype.waitFor = function waitFor(testFx, then, onTimeout, timeout, de
                     if (!self.options.silentErrors) {
                         throw error;
                     }
-                } finally {
-                    return;
                 }
-            }
-            self.log(f("waitFor() finished in %dms.", new Date().getTime() - start), "info");
-            clearInterval(interval);
-            if (then) {
-                self.then(then);
+            } else {
+                self.log(f("waitFor() finished in %dms.", new Date().getTime() - start), "info");
+                clearInterval(interval);
+                if (then) {
+                    self.then(then);
+                }
             }
         }, this.options.retryTimeout, this);
         this.waiters.push(interval);
@@ -2434,7 +2445,7 @@ Casper.prototype.zoom = function zoom(factor) {
  */
 Casper.extend = function(proto) {
     "use strict";
-    this.emit("deprecated", "Casper.extend() has been deprecated since 0.6; check the docs")
+    this.emit("deprecated", "Casper.extend() has been deprecated since 0.6; check the docs");
     if (!utils.isObject(proto)) {
         throw new CasperError("extends() only accept objects as prototypes");
     }
@@ -2450,7 +2461,7 @@ exports.Casper = Casper;
  * @return WebPage
  */
 function createPage(casper) {
-    /*jshint maxstatements:20*/
+    /*eslint max-statements:0*/
     "use strict";
     var page = require('webpage').create();
     page.onAlert = function onAlert(message) {
@@ -2507,7 +2518,7 @@ function createPage(casper) {
         casper.emit('load.started');
     };
     page.onLoadFinished = function onLoadFinished(status) {
-        /*jshint maxstatements:20*/
+        /*eslint max-statements:0*/
         if (status !== "success") {
             casper.emit('load.failed', {
                 status:      status,
@@ -2544,11 +2555,11 @@ function createPage(casper) {
         if (isMainFrame && casper.requestUrl !== url) {
             var currentUrl = casper.requestUrl;
             var newUrl = url;
-            var pos = currentUrl.indexOf('#')
+            var pos = currentUrl.indexOf('#');
             if (pos !== -1) {
                 currentUrl = currentUrl.substring(0, pos);
             }
-            pos = newUrl.indexOf('#')
+            pos = newUrl.indexOf('#');
             if (pos !== -1) {
                 newUrl = newUrl.substring(0, pos);
             }

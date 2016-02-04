@@ -28,8 +28,6 @@
  *
  */
 
-/*global CasperError, exports, phantom, __utils__, patchRequire, require:true*/
-
 var require = patchRequire(require);
 var fs = require('fs');
 var events = require('events');
@@ -84,7 +82,7 @@ exports.create = function create(casper, options) {
  */
 var Tester = function Tester(casper, options) {
     "use strict";
-    /*jshint maxstatements:99*/
+    /*eslint max-statements:0*/
     if (!utils.isCasperObject(casper)) {
         throw new CasperError("Tester needs a Casper instance");
     }
@@ -100,6 +98,7 @@ var Tester = function Tester(casper, options) {
     this._tearDown = undefined;
     this.aborted = false;
     this.executed = 0;
+    this.loop = 0;
     this.currentTestFile = null;
     this.currentTestStartTime = new Date();
     this.currentSuite = undefined;
@@ -123,10 +122,16 @@ var Tester = function Tester(casper, options) {
     this.running = false;
     this.started = false;
     this.suiteResults = new TestSuiteResult();
+    this.exporter = require(casper.cli.get('exporter') || 'xunit').create();
+    this.errorOnFail = casper.cli.get('error-on-failure');
+    this.retryFailure = casper.cli.get('retry-failures'); 
+    this.buildNumber = casper.cli.get('buildNumber');
+    this.site = casper.cli.get('site'); 
 
     this.on('success', function onSuccess(success) {
         var timeElapsed = new Date() - this.currentTestStartTime;
         this.currentSuite.addSuccess(success, timeElapsed - this.lastAssertTime);
+        this.exporter.addSuccess(fs.absolute(success.file), success.message || success.standard, timeElapsed - this.lastAssertTime);
         this.lastAssertTime = timeElapsed;
     });
 
@@ -137,30 +142,47 @@ var Tester = function Tester(casper, options) {
     });
 
     this.on('fail', function onFail(failure) {
-        // export
-        var valueKeys = Object.keys(failure.values),
-            timeElapsed = new Date() - this.currentTestStartTime;
-        this.currentSuite.addFailure(failure, timeElapsed - this.lastAssertTime);
-        this.lastAssertTime = timeElapsed;
-        // special printing
-        if (failure.type) {
-            this.comment('   type: ' + failure.type);
+        if(this.loop < 2 && this.retryFailure) {
+            this.loop++;
+            casper.options.retryFactor += 0.5;
+            casper.echo('Caught failure, retry attempt: ' + this.loop + ' of 2');
+            casper.echo('Bumping waitTime to factor: ' + casper.options.retryFactor);
+            self.runTest(this.currentTestFile);
         }
-        if (failure.file) {
-            this.comment('   file: ' + failure.file + (failure.line ? ':' + failure.line : ''));
-        }
-        if (failure.lineContents) {
-            this.comment('   code: ' + failure.lineContents);
-        }
-        if (!failure.values || valueKeys.length === 0) {
-            return;
-        }
-        valueKeys.forEach(function(name) {
-            this.comment(f('   %s: %s', name, utils.formatTestValue(failure.values[name], name)));
-        }.bind(this));
-        // check for fast failing
-        if (this.options.failFast) {
-            return this.terminate('--fail-fast: aborted all remaining tests');
+        else {
+            // export
+            var valueKeys = Object.keys(failure.values),
+                timeElapsed = new Date() - this.currentTestStartTime;
+            this.currentSuite.addFailure(failure, timeElapsed - this.lastAssertTime);
+            this.exporter.addFailure(
+                fs.absolute(failure.file),
+                failure.message  || failure.standard,
+                failure.standard || "test failed",
+                failure.type     || "unknown",
+                (timeElapsed - this.lastAssertTime),
+                failure.values, this.site, this.buildNumber
+            );
+            this.lastAssertTime = timeElapsed;
+            // special printing
+            if (failure.type) {
+                this.comment('   type: ' + failure.type);
+            }
+            if (failure.file) {
+                this.comment('   file: ' + failure.file + (failure.line ? ':' + failure.line : ''));
+            }
+            if (failure.lineContents) {
+                this.comment('   code: ' + failure.lineContents);
+            }
+            if (!failure.values || valueKeys.length === 0) {
+                return;
+            }
+            valueKeys.forEach(function(name) {
+                this.comment(f('   %s: %s', name, utils.formatTestValue(failure.values[name], name)));
+            }.bind(this));
+            // check for fast failing
+            if (this.options.failFast) {
+                return this.terminate('--fail-fast: aborted all remaining tests');
+            }
         }
     });
 
@@ -224,7 +246,7 @@ var Tester = function Tester(casper, options) {
     };
 
     this.casper.options.onWaitTimeout = function test_onWaitTimeout(timeout, details) {
-        /*jshint maxcomplexity:10*/
+        /*eslint complexity:0*/
         var message = f("Wait timeout occured (%dms)", timeout);
         details = details || {};
 
@@ -285,6 +307,55 @@ Tester.prototype.skip = function skip(nb, message) {
         number: nb,
         skipped: true
     });
+};
+
+/**
+ * Skip `nb` test on specific engine(s).
+ *
+ * A skip specifier is an object of the form:
+ * {
+ *     name: 'casperjs' | 'phantomjs',
+ *     version: {
+ *         min:   Object,
+ *         max:   Object
+ *     },
+ *     message: String
+ * }
+ *
+ * Minimal and maximal versions to be skipped are determined using
+ * utils.matchEngine.
+ *
+ * @param  Integer  nb        Number of tests to skip
+ * @param  Mixed    skipSpec  a single skip specifier object or
+ *                            an Array of skip specifier objects
+ * @return Object
+ */
+Tester.prototype.skipIfEngine = function skipIfEngine(nb, skipSpec) {
+    skipSpec = utils.matchEngine(skipSpec);
+    if (skipSpec) {
+        var message = skipSpec.name;
+        var version = skipSpec.version;
+        var skipMessage = skipSpec.message;
+        if (version) {
+            var min = version.min;
+            var max = version.max;
+            if (min && min === max) {
+                message += ' ' + min;
+            } else {
+                if (min) {
+                    message += ' from ' + min;
+                }
+                if (max) {
+                    message += ' to ' + max;
+                }
+            }
+        }
+        if (skipMessage) {
+            message += ' ' + skipMessage;
+        }
+        return this.skip(nb, message);
+    }
+    return false;
 };
 
 /**
@@ -450,7 +521,6 @@ Tester.prototype.assertEvalEqual = function assertEvalEquals(fn, expected, messa
 };
 
 function baseFieldAssert(inputName, expected, actual, message) {
-    /*jshint validthis:true */
     "use strict";
 
     return this.assert(utils.equals(actual, expected),  message, {
@@ -667,7 +737,7 @@ Tester.prototype.assertNotVisible =
 Tester.prototype.assertInvisible = function assertNotVisible(selector, message) {
     "use strict";
     return this.assert(!this.casper.visible(selector), message, {
-        type: "assertVisible",
+        type: "assertNotVisible",
         standard: "Selector is not visible",
         values: {
             selector: selector
@@ -777,7 +847,7 @@ Tester.prototype.assertTextExist = function assertTextExists(text, message) {
  */
 Tester.prototype.assertTruthy = function assertTruthy(subject, message) {
     "use strict";
-    /*jshint eqeqeq:false*/
+    /*eslint eqeqeq:0*/
     return this.assert(utils.isTruthy(subject), message, {
         type: "assertTruthy",
         standard: "Subject is truthy",
@@ -796,7 +866,7 @@ Tester.prototype.assertTruthy = function assertTruthy(subject, message) {
  */
 Tester.prototype.assertFalsy = function assertFalsy(subject, message) {
     "use strict";
-    /*jshint eqeqeq:false*/
+    /*eslint eqeqeq:0*/
     return this.assert(utils.isFalsy(subject), message, {
         type: "assertFalsy",
         standard: "Subject is falsy",
@@ -1063,7 +1133,7 @@ Tester.prototype.begin = function begin() {
         config = getConfig([].slice.call(arguments)),
         next = function() {
             config.test(this, this.casper);
-            if (this.options.concise)
+            if (!this.options.concise) {
                 this.casper.echo([
                     this.colorize('PASS', 'INFO'),
                     this.formatMessage(description),
@@ -1071,6 +1141,7 @@ Tester.prototype.begin = function begin() {
                                     config.planned,
                                     config.planned > 1 ? 's' : ''), 'INFO')
                 ].join(' '));
+            }
         }.bind(this);
 
     if (!this.options.concise)
@@ -1133,7 +1204,7 @@ Tester.prototype.comment = function comment(message) {
  */
 Tester.prototype.done = function done() {
     "use strict";
-    /*jshint maxstatements:20, maxcomplexity:20*/
+    /*eslint max-statements:0, complexity:0*/
     var planned, config = this.currentSuite && this.currentSuite.config || {};
 
     if (arguments.length && utils.isNumber(arguments[0])) {
@@ -1339,15 +1410,15 @@ function getStackEntry(error, testFile) {
     if (! ('stack' in error))
         return null;
 
-    var r = /^\s*(.*)@(.*):(\d+)\s*$/gm;
+    var r = /\r?\n\s*(.*?)(at |@)([^:]*?):(\d+):?(\d*)/g;
     var m;
     while ((m = r.exec(error.stack))) {
-        var sourceURL = m[2];
+        var sourceURL = m[3];
         if (sourceURL.indexOf('->') !== -1) {
             sourceURL = sourceURL.split('->')[1].trim();
         }
         if (sourceURL === testFile) {
-            return { sourceURL: sourceURL, line: m[3]}
+            return { sourceURL: sourceURL, line: m[4], column: m[5]};
         }
     }
     return null;
@@ -1489,7 +1560,7 @@ Tester.prototype.renderFailureDetails = function renderFailureDetails() {
  */
 Tester.prototype.renderResults = function renderResults(exit, status, save) {
     "use strict";
-    /*jshint maxstatements:25*/
+    /*eslint max-statements:0*/
     save = save || this.options.save;
     var exitStatus = 0,
         failed = this.suiteResults.countFailed(),
@@ -1528,7 +1599,7 @@ Tester.prototype.renderResults = function renderResults(exit, status, save) {
     }
     if (exit === true) {
         this.emit("exit");
-        this.casper.exit(status ? ~~status : exitStatus);
+        this.casper.exit(~~status);
     }
 };
 
@@ -1958,13 +2029,14 @@ TestCaseResult.prototype.addSkip = function addSkip(skipped, time) {
 
 
 /**
- * Adds a warning record.
+ * Adds a warning message.
+ * NOTE: quite contrary to addError, addSuccess, and addSkip
+ * this adds a String value, NOT an Object
  *
- * @param Object  warning
+ * @param String  warning
  */
 TestCaseResult.prototype.addWarning = function addWarning(warning) {
     "use strict";
-    warning.suite = this.name;
     this.warnings.push(warning);
 };
 

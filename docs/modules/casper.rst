@@ -110,6 +110,8 @@ Logging level (see the logging section for more information)
 
 **Default:** ``null``
 
+**Signature:** ``onAlert(String message)``
+
 A function to be called when a javascript alert() is triggered
 
 ``onDie``
@@ -118,6 +120,8 @@ A function to be called when a javascript alert() is triggered
 **Type:** ``Function``
 
 **Default:** ``null``
+
+**Signature:** ``onDie(Object Casper, String message, String status)``
 
 A function to be called when Casper#die() is called
 
@@ -130,6 +134,8 @@ A function to be called when Casper#die() is called
 
 **Default:** ``null``
 
+**Signature:** ``onError(String msg, Array backtrace)``
+
 A function to be called when an "error" level event occurs
 
 .. index:: error, Error handling
@@ -141,6 +147,8 @@ A function to be called when an "error" level event occurs
 
 **Default:** ``null``
 
+**Signature:** ``onLoadError(Object Casper, String casper.requestUrl, String status)``
+
 A function to be called when a requested resource cannot be loaded
 
 ``onPageInitialized``
@@ -149,6 +157,8 @@ A function to be called when a requested resource cannot be loaded
 **Type:** ``Function``
 
 **Default:** ``null``
+
+**Signature:** ``onPageInitialized(Object page)``
 
 A function to be called after ``WebPage`` instance has been initialized
 
@@ -160,6 +170,8 @@ A function to be called after ``WebPage`` instance has been initialized
 **Type:** ``Function``
 
 **Default:** ``null``
+
+**Signature:** ``onResourceReceived(Object resource)``
 
 Proxy method for PhantomJS' ``WebPage#onResourceReceived()`` callback, but the current Casper instance is passed as first argument.
 
@@ -183,6 +195,8 @@ Proxy method for PhantomJS' WebPage#onResourceRequested() callback, but the curr
 
 **Default:** ``null``
 
+**Signature:** ``onStepComplete(Object Casper, stepResult)``
+
 A function to be executed when a step function execution is finished.
 
 .. index:: Step stack, Error handling, timeout
@@ -193,6 +207,8 @@ A function to be executed when a step function execution is finished.
 **Type:** ``Function``
 
 **Default:** ``Function``
+
+**Signature:** ``onStepTimeout(Integer timeout, Integer stepNum)``
 
 A function to be executed when a step function execution time exceeds the value of the stepTimeout option, if any has been set.
 
@@ -207,6 +223,8 @@ By default, on timeout the script will exit displaying an error, except in test 
 
 **Default:** ``Function``
 
+**Signature:** ``onTimeout(Integer timeout)``
+
 A function to be executed when script execution time exceeds the value of the timeout option, if any has been set.
 
 By default, on timeout the script will exit displaying an error, except in test environment where it will just add a failure to the suite results.
@@ -220,6 +238,8 @@ By default, on timeout the script will exit displaying an error, except in test 
 
 **Default:** ``Function``
 
+**Signature:** ``onWaitTimeout(Integer timeout)``
+
 A function to be executed when a ``waitFor*`` function execution time exceeds the value of the waitTimeout option, if any has been set.
 
 By default, on timeout the script will exit displaying an error, except in test environment where it will just add a failure to the suite results.
@@ -232,6 +252,10 @@ By default, on timeout the script will exit displaying an error, except in test 
 **Default:** ``null``
 
 An existing PhantomJS ``WebPage`` instance
+
+.. warning::
+
+   **Overriding** the ``page`` properties can cause some of the casper features **may not work**. For example, overriding the ``onUrlChanged`` property will cause the ``waitForUrl`` feature not work.
 
 .. index:: settings, PhantomJS, SSL, auth, XSS
 
@@ -764,7 +788,7 @@ Prints something to stdout, optionally with some fancy color (see the :ref:`colo
 
 **Signature:** ``evaluate(Function fn[, arg1[, arg2[, …]]])``
 
-Basically `PhantomJS' WebPage#evaluate <https://github.com/ariya/phantomjs/wiki/API-Reference#wiki-webpage-evaluate>`_ equivalent. Evaluates an expression **in the current page DOM context**::
+Basically `PhantomJS' WebPage#evaluate <http://phantomjs.org/api/webpage/method/evaluate.html>`_ equivalent. Evaluates an expression **in the current page DOM context**::
 
     casper.evaluate(function(username, password) {
         document.querySelector('#username').value = username;
@@ -983,7 +1007,32 @@ are referenced by ``CSS3`` selectors::
             'input[name="attachment"]': '/Users/chuck/roundhousekick.doc'
         }, true);
     });
+    
+``fillLabels()``
+-------------------------------------------------------------------------------
 
+**Signature:** ``fillLabels(String selector, Object values[, Boolean submit])``
+
+.. versionadded:: 1.1
+
+Fills a form with provided field values using associated label text Fields
+are referenced by label content values::
+
+    casper.start('http://some.tld/contact.form', function() {
+        this.fillLabels('form#contact-form', {
+            Email:         'chuck@norris.com',
+            Password:      'chuck',
+            Content:       'Am watching thou',
+            Check:         true,
+            No:            true,
+            Topic:         'bar',
+            Multitopic:    ['bar', 'car'],
+            File:          fpath,
+            "1":           true,
+            "3":           true,
+            Strange:       "very"
+        }, true);
+    });
 
 ``fillXPath()``
 -------------------------------------------------------------------------------
@@ -1610,7 +1659,7 @@ Of course you can directly pass the auth string in the url to open::
 
 **Signature:** ``start(String url[, Function then])``
 
-Configures and starts Casper, then open the provided ``url`` and optionally adds the step provided by the ``then`` argument::
+Configures and starts Casper, then opens the provided ``url`` and optionally adds the step provided by the ``then`` argument::
 
     casper.start('http://google.fr/', function() {
         this.echo("I'm loaded.");
@@ -1856,7 +1905,7 @@ Adds a new navigation step to perform code evaluation within the current retriev
 
     casper.run();
 
-This method is basically a convenient a shortcut for chaining a `then()`_ and an `evaluate()`_ calls.
+This method is a convenient shortcut for chaining `then()`_ and `evaluate()`_ calls.
 
 ``thenOpen()``
 -------------------------------------------------------------------------------

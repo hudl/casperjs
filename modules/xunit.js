@@ -117,7 +117,7 @@ XUnitExporter.prototype.getXML = function getXML() {
         // failed test cases
         result.failures.forEach(function(failure) {
             var testCase = utils.node('testcase', {
-                name: failure.message || failure.standard,
+                name: failure.name || failure.message || failure.standard,
                 classname: generateClassName(failure.file),
                 time: utils.ms2seconds(~~failure.time)
             });
@@ -162,7 +162,7 @@ XUnitExporter.prototype.getSerializedXML = function getSerializedXML(xml) {
     "use strict";
     var serializer = new XMLSerializer();
     return '<?xml version="1.0" encoding="UTF-8"?>' + serializer.serializeToString(this.getXML());
-}
+};
 
 /**
  * Sets test results.

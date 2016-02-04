@@ -721,11 +721,12 @@ Writes an error-style formatted message to stdout::
 ``fail()``
 -------------------------------------------------------------------------------
 
-**Signature:** ``fail(String message)``
+**Signature:** ``fail(String message [, Object option])``
 
 Adds a failed test entry to the stack::
 
     casper.test.fail("Georges W. Bush");
+    casper.test.fail("Here goes a really long and expressive message", {name:'shortfacts'});
 
 .. seealso:: `pass()`_
 
@@ -919,7 +920,7 @@ Skips a given number of planned tests::
 
 **Signature:** ``tearDown([Function fn])``
 
-Defines a function which will be executed before after every test defined using `begin()`_::
+Defines a function which will be executed after every test defined using `begin()`_::
 
     casper.test.tearDown(function() {
         casper.echo('See ya');

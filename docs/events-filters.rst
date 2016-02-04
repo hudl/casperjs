@@ -38,6 +38,65 @@ Of course you can emit your own events, using the ``Casper.emit()`` method::
 
     casper.run();
 
+Removing events
++++++++++++++++++++++++
+
+You can also remove events. This is particularly useful when running a lot of tests where you might need to add and remove different events for different tests::
+
+    var casper = require('casper').create();
+
+    // listener function for requested resources
+    var listener = function(resource, request) {
+        this.echo(resource.url);
+    };
+
+    // listening to all resources requests
+    casper.on("resource.requested", listener);
+
+    // load the google homepage
+    casper.start('http://google.com/', function() {
+        this.echo(this.getTitle());
+    });
+
+    casper.run().then(function() {
+        // remove the event listener
+        this.removeListener("resource.requested", listener);
+    });
+
+Here is an example of how to use this in a casperjs test within the tearDown function.::
+
+    var currentRequest;
+
+    //Resource listener
+    function onResourceRequested(requestData, request) {
+        if (/\/jquery\.min\.js/.test(requestData.url)) {
+            currentRequest = requestData;
+        }
+    }
+
+    casper.test.begin('JQuery Test', 1, {
+        setUp: function() {
+            // Attach the resource listener
+            casper.on('resource.requested', onResourceRequested);
+        },
+
+        tearDown: function() {
+            // Remove the resource listener
+            casper.removeListener('resource.requested', onResourceRequested);
+            currentRequest = undefined;
+        },
+
+        test: function(test) {
+            casper.start('http://casperjs.org/', function() {
+                test.assert(currentRequest !== undefined, "JQuery Exists");
+            });
+
+            casper.run(function() {
+                test.done();
+            });
+        }
+    });
+
 .. _events_list:
 
 Events reference
@@ -192,7 +251,7 @@ Emitted when the ``Casper.log()`` method has been called. The ``entry`` paramete
         date:    "a javascript Date instance"
     }
 
-..index:: click
+.. index:: click
 
 ``mouse.click``
 ~~~~~~~~~~~~~~~
@@ -320,13 +379,6 @@ Emitted when a new window has been loaded.
 **Arguments:** ``WebPage``
 
 Emitted when a new opened window has been closed.
-
-``popup.created``
-~~~~~~~~~~~~~~~~~
-
-**Arguments:** ``WebPage``
-
-Emitted when a new window has been opened.
 
 ``remote.alert``
 ~~~~~~~~~~~~~~~~
@@ -499,7 +551,7 @@ Emitted when a ``Casper.wait()`` operation starts.
 
 Emitted when the execution time of a ``Casper.wait*()`` operation has exceeded the value of ``timeout``.
 
-``deatils`` is a property bag describing what was being waited on. For example, if ``waitForSelector`` timed out, ``details`` will have a ``selector`` string property that was the selector that did not show up in time.
+``details`` is a property bag describing what was being waited on. For example, if ``waitForSelector`` timed out, ``details`` will have a ``selector`` string property that was the selector that did not show up in time.
 
 
 .. index:: filters

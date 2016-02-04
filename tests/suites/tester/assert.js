@@ -1,5 +1,4 @@
-/*global casper*/
-/*jshint strict:false, maxstatements:99*/
+/*eslint strict:0, max-statements:0*/
 var fs = require('fs');
 
 casper.test.begin('Common assertions tests', 47, function(test) {
@@ -40,7 +39,7 @@ casper.test.begin('Common assertions tests', 47, function(test) {
         test.assertSelectorExists('body', 'Tester.assertSelectorExists() works as expected [alias]');
         test.assertSelectorExist('body', 'Tester.assertSelectorExist() works as expected [alias]');
         test.assertDoesntExist('foobar', 'Tester.assertDoesntExist() works as expected');
-        test.assertDoesntExist('foobar', 'Tester.assertNotExist() works as expected [alias]');
+        test.assertNotExists('foobar', 'Tester.assertNotExists() works as expected [alias]');
         // using file:// protocol, HTTP status is always null
         test.assertHttpStatus(200, 'Tester.assertHttpStatus() works as expected');
         test.assertMatch("the lazy dog", /lazy/, 'Tester.assertMatch() works as expected');
@@ -87,7 +86,7 @@ casper.test.begin('Tester.assertField(): filled inputs', 7, function(test) {
         test.assertField('content', '', 'Tester.assertField() works as expected with textarea');
         test.assertField('check', false, 'Tester.assertField() works as expected with checkboxes');
         test.assertField('choice', null, 'Tester.assertField() works as expected with radios');
-        test.assertField('topic', 'foo', 'Tester.assertField() works as expected with selects');
+        test.assertField('topic', '', 'Tester.assertField() works as expected with selects');
         test.assertField('file', '', 'Tester.assertField() works as expected with file inputs');
         test.assertField('checklist[]', [], 'Tester.assertField() works as expected with check lists');
     }).run(function() {
@@ -99,7 +98,14 @@ casper.test.begin('Tester.assertField(): unfilled inputs', 7, function(test) {
     var fpath = fs.pathJoin(phantom.casperPath, 'README.md');
     var fileValue = 'README.md';
     if (phantom.casperEngine === 'phantomjs') {
-        fileValue = 'C:\\fakepath\\README.md'; // phantomjs/webkit sets that;
+        if (utils.matchEngine({
+            name: 'phantomjs',
+            version: {min: '2.0.0', max: '2.0.0'}
+        })) {
+            fileValue = '';
+        } else {
+            fileValue = 'C:\\fakepath\\README.md'; // phantomjs/webkit sets that;
+        }
     }
 
     casper.start('tests/site/form.html', function() {
