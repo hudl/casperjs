@@ -1,13 +1,15 @@
 {
-  "name": "casperjs",
-  "description": "A navigation scripting & testing utility for PhantomJS and SlimerJS",
-  "version": "1.1.0-beta4",
+  "name": "hudl-casperjs",
+  "description": "A navigation scripting & testing utility for PhantomJS and SlimerJS + Hudl changes",
+  "version": "1.0.0",
   "keywords": [
     "phantomjs",
     "slimerjs",
     "test",
     "testing",
-    "scraping"
+    "scraping",
+    "hudl",
+    "teamcity"
   ],
   "bin": "./bin/casperjs",
   "author": {
@@ -16,17 +18,15 @@
     "web": "https://nicolas.perriault.net/"
   },
   "bugs": {
-    "url": "https://github.com/n1k0/casperjs/issues"
+    "url": "https://github.com/hudl/casperjs/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/n1k0/casperjs.git"
+    "url": "git://github.com/hudl/casperjs.git"
   },
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "http://www.opensource.org/licenses/mit-license.php"
-    }
-  ],
+  "licenses": [{
+    "type": "MIT",
+    "url": "http://www.opensource.org/licenses/mit-license.php"
+  }],
   "homepage": "http://casperjs.org"
 }
