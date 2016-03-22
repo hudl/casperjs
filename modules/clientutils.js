@@ -778,7 +778,7 @@
                 dataString = "",
                 dataList = [];
             method = method && method.toUpperCase() || "GET";
-            var contentType = settings || "application/x-www-form-urlencoded";
+            var contentType = settings && settings.contentType || "application/x-www-form-urlencoded";
             xhr.open(method, url, !!async);
             this.log("sendAJAX(): Using HTTP method: '" + method + "'", "debug");
             if (settings && settings.overrideMimeType) {
