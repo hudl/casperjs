@@ -120,7 +120,6 @@ TeamCityExporter.prototype.addSuccess = function addSuccess(classname, name, dur
     "use strict";
 
     var suitename = generateClassName(classname);
-
     console.log("##teamcity[testStarted name= " + escapeTeamCityText(suitename) + " '" + escapeTeamCityText(name) + "' captureStandardOutput='false' timestamp='" + getTeamCityEarlierDate(duration) + "' ]");
     console.log("##teamcity[testFinished name= " + escapeTeamCityText(suitename) + " '" + escapeTeamCityText(name) + "' duration='" + duration + "' timestamp='" + getTeamCityNowDate() + "']");
 };
