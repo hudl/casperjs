@@ -119,8 +119,10 @@ exports.TeamCityExporter = TeamCityExporter;
 TeamCityExporter.prototype.addSuccess = function addSuccess(classname, name, duration) {
     "use strict";
 
-    console.log("##teamcity[testStarted name='" + escapeTeamCityText(name) + "' captureStandardOutput='false' timestamp='" + getTeamCityEarlierDate(duration) + "' ]");
-    console.log("##teamcity[testFinished name='" + escapeTeamCityText(name) + "' duration='" + duration + "' timestamp='" + getTeamCityNowDate() + "']");
+    var suitename = generateClassName(classname);
+
+    console.log("##teamcity[testStarted name= " + escapeTeamCityText(suitename) + " '" + escapeTeamCityText(name) + "' captureStandardOutput='false' timestamp='" + getTeamCityEarlierDate(duration) + "' ]");
+    console.log("##teamcity[testFinished name= " + escapeTeamCityText(suitename) + " '" + escapeTeamCityText(name) + "' duration='" + duration + "' timestamp='" + getTeamCityNowDate() + "']");
 };
 
 /**
@@ -155,13 +157,13 @@ TeamCityExporter.prototype.addFailure = function addFailure(classname, name, mes
     }
 
 	var suitename = generateClassName(classname);
-    console.log("##teamcity[testStarted name='" + escapeTeamCityText(name) + "' captureStandardOutput='false' timestamp='" + getTeamCityEarlierDate(duration) + "']");
+    console.log("##teamcity[testStarted name= " + escapeTeamCityText(suitename) + " '" + escapeTeamCityText(name) + "' captureStandardOutput='false' timestamp='" + getTeamCityEarlierDate(duration) + "']");
 
     // Used for Splunk
     console.log("##teamcity[LogFailure name='" + escapeTeamCityText(suitename) + ' ' + escapeTeamCityText(name) + "' site='" + site + "' buildNumber='" + buildNumber + "' timestamp='" + getTeamCityNowDate() + "']");
 
-    console.log("##teamcity[testFailed name='" + escapeTeamCityText(name) + "' message='" + escapeTeamCityText(message) +"' details='" + escapeTeamCityText(details) + "' timestamp='" + getTeamCityNowDate() + "']");
-    console.log("##teamcity[testFinished name='" + escapeTeamCityText(name) + "' duration='" + duration + "' timestamp='" + getTeamCityNowDate() + "']");
+    console.log("##teamcity[testFailed name= " + escapeTeamCityText(suitename) + " '" + escapeTeamCityText(name) + "' message='" + escapeTeamCityText(message) +"' details='" + escapeTeamCityText(details) + "' timestamp='" + getTeamCityNowDate() + "']");
+    console.log("##teamcity[testFinished name= " + escapeTeamCityText(suitename) + " '" + escapeTeamCityText(name) + "' duration='" + duration + "' timestamp='" + getTeamCityNowDate() + "']");
 };
 
 TeamCityExporter.prototype.fileStarted = function (filename) {
